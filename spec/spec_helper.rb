@@ -1,4 +1,4 @@
-module ProjectSupport
+module SpecHelper
   def perform_request
     response = Curl::Easy.perform('http://localhost:7516')
   end
@@ -17,8 +17,9 @@ module ProjectSupport
     puts "Killing #{@launcher_pid}"
     Process.kill "QUIT", @launcher_pid
   end
+
+  RSpec.configure do |config|
+    config.include self
+  end
 end
 
-RSpec.configure do |config|
-  config.include ProjectSupport
-end

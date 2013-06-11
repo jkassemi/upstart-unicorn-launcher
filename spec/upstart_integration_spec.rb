@@ -6,6 +6,12 @@ describe 'Upstart integration' do
     kill_launcher
   end
 
+  after :all do
+    if File.exist?('spec/templates/test/unicorn.pid')
+      Process.kill "QUIT", File.read('spec/templates/test/unicorn.pid').to_i
+    end
+  end
+
   it 'starts server' do
     start_launcher
     expect {perform_request}.to_not raise_error

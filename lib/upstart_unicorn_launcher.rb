@@ -17,7 +17,9 @@ class UpstartUnicornLauncher
     quit_server_on :QUIT, :INT, :TERM
     forward_to_server :USR1, :USR2, :WINCH, :TTIN, :TTOU
     start_server
-    wait_until_server_quits
+    loop do
+      sleep 1
+    end
   end
 
   private
@@ -25,45 +27,39 @@ class UpstartUnicornLauncher
   def start_server
     abort "The unicorn pidfile '#{pidfile}' already exists.  Is the server running already?" if File.exist?(pidfile)
     spawned_pid = Process.spawn command
-    wait_for { File.exist?(pidfile) }
+    wait_for_with_timeout { File.exist?(pidfile) }
   rescue Timeout::Error
     Process.kill "QUIT", spawned_pid
     abort "Unable to find server running with pidfile #{pidfile}.  Exiting"
   end
 
   def restart_server_on(*signals)
-    signals.each do |signal|
-      debug "Received #{signal}, restarting server"
-      trap(signal.to_s) { restart_server }
+    trap_signals("restarting server", *signals) do
+      restart_server
     end
   end
 
   def quit_server_on(*signals)
-    signals.each do |signal|
-      trap(signal.to_s) do
-        debug "Received #{signal}, quitting server"
-        Process.kill signal.to_s, pid
-        wait_until_server_quits
-        exit
-      end
+    trap_signals("quitting server", *signals) do |signal|
+      Process.kill signal, pid
+      wait_until_server_quits
+      exit
     end
   end
 
   def forward_to_server(*signals)
-    signals.each do |signal|
-      trap(signal.to_s) do
-        debug "Forwarding #{signal} to #{pid}"
-        Process.kill signal.to_s, pid
-      end
+    trap_signals("forwarding", *signals) do |signal|
+      Process.kill signal, pid
     end
   end
 
   def wait_until_server_quits
-    wait_for { !running? }
+    wait_for_with_timeout { !running? }
   end
 
   def restart_server
     reexecute_running_binary
+    wait_for_with_timeout { old_pid }
     wait_for_server_to_start
     quit_old_master
   end
@@ -105,10 +101,23 @@ class UpstartUnicornLauncher
     end
   end
 
-  def wait_for(timeout = 20, &block)
+  def wait_for(&block)
+    until block.call
+      sleep tick_period
+    end
+  end
+
+  def wait_for_with_timeout(timeout = 20, &block)
     Timeout::timeout timeout do
-      until block.call
-        sleep tick_period
+      wait_for(&block)
+    end
+  end
+
+  def trap_signals(message, *signals, &block)
+    signals.map(&:to_s).each do |signal|
+      trap(signal) do
+        debug "Received #{signal}, #{message}"
+        block.call signal
       end
     end
   end
