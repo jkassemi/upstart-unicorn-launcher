@@ -1,13 +1,14 @@
 require 'timeout'
 
 class UpstartUnicornLauncher
-  attr_accessor :command, :pidfile, :startup_period, :tick_period, :restarting
+  attr_accessor :command, :pidfile, :startup_period, :tick_period, :restarting, :verbose
 
   def initialize(command, options = {})
     self.command = command
     self.pidfile = File.expand_path(options[:pidfile] || 'unicorn.pid')
     self.startup_period = options[:startup] || 60
     self.tick_period = options[:tick] || 0.1
+    self.verbose = options[:verbose] || false
   end
 
   def start
@@ -32,6 +33,7 @@ class UpstartUnicornLauncher
 
   def restart_server_on(*signals)
     signals.each do |signal|
+      debug "Received #{signal}, restarting server"
       trap(signal.to_s) { restart_server }
     end
   end
@@ -39,6 +41,7 @@ class UpstartUnicornLauncher
   def quit_server_on(*signals)
     signals.each do |signal|
       trap(signal.to_s) do
+        debug "Received #{signal}, quitting server"
         Process.kill signal.to_s, pid
         wait_until_server_quits
         exit
@@ -97,7 +100,9 @@ class UpstartUnicornLauncher
   private
 
   def debug(message)
-    puts message
+    if verbose
+      puts message
+    end
   end
 
   def wait_for(timeout = 20, &block)

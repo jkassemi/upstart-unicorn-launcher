@@ -4,7 +4,7 @@ module ProjectSupport
   end
 
   def start_launcher
-    @launcher_pid = Process.spawn "upstart-unicorn-launcher -s 1 -p spec/templates/test/unicorn.pid -- unicorn -p 7516 -c spec/templates/test/unicorn.rb spec/templates/test/config.ru"
+    @launcher_pid = Process.spawn "upstart-unicorn-launcher -v -s 1 -p spec/templates/test/unicorn.pid -- unicorn -p 7516 -c spec/templates/test/unicorn.rb spec/templates/test/config.ru"
     sleep 1
     puts "Launched upstart-unicorn-launcher with PID #{@launcher_pid}"
   end

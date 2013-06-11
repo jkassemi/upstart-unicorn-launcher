@@ -16,6 +16,10 @@ OptionParser.new do |opts|
   opts.on("-s", "--startup-time STARTUP", "Time to wait for server to start") do |time|
     options[:startup] = time.to_i
   end
+
+  opts.on("-v", "--verbose", "Verbose output") do
+    options[:verbose] = true
+  end
 end.parse!(ARGV[0...command_index])
 
 launcher = UpstartUnicornLauncher.new command, options
