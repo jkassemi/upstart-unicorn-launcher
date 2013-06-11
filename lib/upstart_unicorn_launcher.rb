@@ -1,4 +1,4 @@
-require "upstart_unicorn_launcher/version"
+require 'timeout'
 
 class UpstartUnicornLauncher
   attr_accessor :command, :pidfile, :startup_period, :tick_period, :restarting
@@ -7,7 +7,7 @@ class UpstartUnicornLauncher
     self.command = command
     self.pidfile = File.expand_path(options[:pidfile] || 'unicorn.pid')
     self.startup_period = options[:startup] || 60
-    self.tick_period = options[:tick] || 1
+    self.tick_period = options[:tick] || 0.1
   end
 
   def start
@@ -24,11 +24,10 @@ class UpstartUnicornLauncher
   def start_server
     abort "The unicorn pidfile '#{pidfile}' already exists.  Is the server running already?" if File.exist?(pidfile)
     spawned_pid = Process.spawn command
-    sleep 0.5
-    unless File.exist?(pidfile)
-      Process.kill "QUIT", spawned_pid
-      abort "Unable to find server running with pidfile #{pidfile}.  Exiting"
-    end
+    wait_for { File.exist?(pidfile) }
+  rescue Timeout::Error
+    Process.kill "QUIT", spawned_pid
+    abort "Unable to find server running with pidfile #{pidfile}.  Exiting"
   end
 
   def restart_server_on(*signals)
@@ -41,6 +40,7 @@ class UpstartUnicornLauncher
     signals.each do |signal|
       trap(signal.to_s) do
         Process.kill signal.to_s, pid
+        wait_until_server_quits
         exit
       end
     end
@@ -56,9 +56,7 @@ class UpstartUnicornLauncher
   end
 
   def wait_until_server_quits
-    while running?
-      sleep tick_period
-    end
+    wait_for { !running? }
   end
 
   def restart_server
@@ -100,5 +98,13 @@ class UpstartUnicornLauncher
 
   def debug(message)
     puts message
+  end
+
+  def wait_for(timeout = 20, &block)
+    Timeout::timeout timeout do
+      until block.call
+        sleep tick_period
+      end
+    end
   end
 end
