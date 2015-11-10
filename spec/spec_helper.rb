@@ -13,6 +13,12 @@ module SpecHelper
     Process.kill signal, @launcher_pid
   end
 
+  def launcher_running?
+    !!Process.getpgid(@launcher_pid)
+  rescue Errno::ESRCH
+    false
+  end
+
   def kill_launcher
     puts "Killing #{@launcher_pid}"
     Process.kill "QUIT", @launcher_pid

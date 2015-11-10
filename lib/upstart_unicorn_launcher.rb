@@ -17,9 +17,8 @@ class UpstartUnicornLauncher
     quit_server_on :QUIT, :INT, :TERM
     forward_to_server :USR1, :USR2, :WINCH, :TTIN, :TTOU
     start_server
-    loop do
-      sleep 1
-    end
+
+    wait_for_server_to_quit
   end
 
   private
@@ -55,6 +54,12 @@ class UpstartUnicornLauncher
 
   def wait_until_server_quits
     wait_for_with_timeout { !running? }
+  end
+
+  def wait_for_server_to_quit
+    until !running?
+      sleep 1
+    end
   end
 
   def restart_server
