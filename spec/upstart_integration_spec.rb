@@ -42,7 +42,7 @@ describe 'Upstart integration' do
     start_launcher
     original_response = perform_request.body_str
     send_to_launcher 'HUP'
-    sleep 1
+    sleep 5
     expect(perform_request.body_str).to_not eql(original_response)
   end
 
@@ -55,5 +55,12 @@ describe 'Upstart integration' do
       expect {responses << perform_request.body_str}.to_not raise_error
     end
     expect(responses.uniq.size).to eql(2)
+  end
+
+  it 'stops running when server quits' do
+    start_launcher
+    send_to_launcher 'QUIT'
+    sleep 2
+    expect(launcher_running?).to be(false)
   end
 end
